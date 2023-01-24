@@ -27,4 +27,22 @@ gain = 0
 for key in list(gain_project):
     gain = gain + gain_project[key].x
 
+
+max_duration = 0
+for t in range(horizon):
+    max_duration = max_duration + START_PLAN[t, long_proj].x - LP[t, long_proj].x
+
+
 print("Gain : " + str(gain))
+
+#print(job_day)
+#print(START_PLAN)
+
+print("Longer project : " + long_proj)
+print("Max duration : " + str(max_duration))
+
+print("________")
+print("NB project per employe")
+
+for x in list(nb_proj_per_employe):
+    print(str(x) + ' : ' + str(nb_proj_per_employe[x].x))
