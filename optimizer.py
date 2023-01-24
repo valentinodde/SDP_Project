@@ -125,7 +125,7 @@ m.addConstrs(qualifs[i][j] >= X[pers,t,job,comp] for i,pers in enumerate(list_pe
 
 
 #avancement du projet
-m.addConstrs((LP_MIN[T, job] == (quicksum(X[pers, t, job, comp] for t in range(T) for pers in list_pers for comp in list_comp) - quicksum(CP[index_job][index_comp] for index_comp in range(nb_comp)) + 1))  for index_job, job in enumerate(list_job) for T in range(horizon))
+m.addConstrs((LP_MIN[T, job] == (quicksum(X[pers, t, job, comp] for t in range(T+1) for pers in list_pers for comp in list_comp) - quicksum(CP[index_job][index_comp] for index_comp in range(nb_comp)) + 1))  for index_job, job in enumerate(list_job) for T in range(horizon))
 
 #contrainte sur les compétences : pas plus que nécessaire sur chaque projet
 m.addConstrs(CP[index_job][index_comp] >= quicksum(X[pers,t,job,comp] for pers in list_pers for t in range(horizon)) for index_comp,comp in enumerate(list_comp) for index_job,job in enumerate(list_job))
