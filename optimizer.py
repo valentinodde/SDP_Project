@@ -33,8 +33,16 @@ def working_days_per_qualification(data):
 
 
 
-CP = working_days_per_qualification(instance)
+def create_vacations():
+    """A staff member cannot work during his holidays"""
+    vacations = dict()
+    for employe in instance['staff']:
+        vacations[employe['name']] = employe['vacations']
+    return vacations
 
+
+CP = working_days_per_qualification(instance)
+vacations = create_vacations()
 
 
 
@@ -85,6 +93,10 @@ X = m.addVars(possibility, name='x', vtype=GRB.BINARY)
 S = m.addVars(possibility_reduced, vtype=GRB.INTEGER, lb = -1000, name='s')
 
 LP_MIN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='lpm')
+
+
+#vacation days
+m.addConstrs(X.sum(pers,t,'*','*') == 0 for pers in list_pers for t in range(horizon) if t+1 in vacations[pers])
 
 
 # Matrice de projet au cours du temps : vaut 1 à partir du moment où le projet est fini
