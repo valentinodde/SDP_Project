@@ -154,23 +154,6 @@ m.addConstrs((b[proj] == 0) >> (gain_project[proj] == instance['jobs'][i]['gain'
 
 m.update()
 
-
-# gain function
-def compute_gain(projects_done, data):
-    gain = 0
-    for i in range(len(projects_done)):
-        g = projects_done[i]
-        job = data['jobs'][i]
-        gain += (horizon + 1 - g)*(job['gain'] + (job['due_date'] - g) * job['daily_penalty'])  
-    return gain
-
-def gain(LP):
-    return compute_gain(transfer_gain(LP),instance)
-
-
-
-
-
 # Fonction Objectif
 m.setObjective(gain_project.sum('*'), GRB.MAXIMIZE)  
 
