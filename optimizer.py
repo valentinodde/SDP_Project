@@ -233,20 +233,11 @@ m.addConstrs(nb_proj_per_employe[pers] == proj_employe_count.sum(pers, '*') for 
 
 m.update()
 
+# Fonction Objectifs
 
-# objective function
-# gain
-# -> gain_project.sum('*')
-# project per employe
-# -> nb_proj_per_employe.sum('*')
-# max project duration
-# -> duration_max_project(plong_proj, LP, START_PLAN)
-
-
-# Fonction Objectif
-m.setObjectiveN(gain_project.sum('*'),0, 3)  
-m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, -2)
-m.setObjectiveN(duration_max_project(get_longest_project(), LP, START_PLAN),2,-1)
+m.setObjectiveN(gain_project.sum('*'),0, 3, -1)  
+m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, 2, 1)
+m.setObjectiveN(duration_max_project(get_longest_project(), LP, START_PLAN), 2, 1, 1)
 
 # Résolution du PL
 m.optimize()
