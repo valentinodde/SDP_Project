@@ -127,13 +127,13 @@ m = Model()
 # planning
 X = m.addVars(possibility, name='x', vtype=GRB.BINARY)
 
-S = m.addVars(possibility_reduced, vtype=GRB.INTEGER, lb = -1000, name='s')
+S = m.addVars(possibility_reduced, vtype=GRB.INTEGER, lb = 0, name='s')
 
-LP_MIN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='lpm')
+LP_MIN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -100, name='lpm')
 
 
-START_MAT = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='start_matrix')
-START_PLAN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='start_planning')
+START_MAT = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -100, name='start_matrix')
+START_PLAN = m.addVars(possibility_reduced2, vtype=GRB.BINARY, name='start_planning')
 
 
 
@@ -142,25 +142,25 @@ m.addConstrs(X.sum(pers,t,'*','*') == 0 for pers in list_pers for t in range(hor
 
 
 # Matrice de projet au cours du temps : vaut 1 à partir du moment où le projet est fini
-LP = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='lp')
+LP = m.addVars(possibility_reduced2, vtype=GRB.BINARY,name='lp')
 
 
 # Donne pour chaque projet sa date de fin moins 1 et vaut horizon si il n'est pas fini
-timeline_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = -1000)
+timeline_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = 0)
 
 
 
-delay_project_temp = m.addVars(list_job,vtype=GRB.INTEGER,lb = -1000)
+delay_project_temp = m.addVars(list_job,vtype=GRB.INTEGER,lb = -100)
 
 # donne les jours de retard pour chaque projets
-delay_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = -1000)
+delay_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = -horizon)
 
 
 # project per employe
-proj_employe = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = -1000)
-proj_employe_count = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = -1000)
+proj_employe = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = 0)
+proj_employe_count = m.addVars(possibility_reduced4,vtype=GRB.BINARY)
 
-nb_proj_per_employe = m.addVars(list_pers,vtype=GRB.INTEGER,lb = -1000)
+nb_proj_per_employe = m.addVars(list_pers,vtype=GRB.INTEGER,lb = 0)
 
 
 
@@ -168,7 +168,7 @@ nb_proj_per_employe = m.addVars(list_pers,vtype=GRB.INTEGER,lb = -1000)
 b = m.addVars(list_job, vtype=GRB.BINARY)
 
 # donne le gain pour chaque projet
-gain_project = m.addVars(list_job,lb = -1000)
+gain_project = m.addVars(list_job,lb = -100)
 
 
 
@@ -195,7 +195,9 @@ m.addConstrs(CP[index_job][index_comp] >= quicksum(X[pers,t,job,comp] for pers i
 m.addConstrs(LP[T, job] == max_(LP_MIN[T, job],0) for T in range(horizon) for job in list_job)
 
 # construct timeline project
-m.addConstrs(timeline_project[proj] == horizon - LP.sum('*',proj) for proj in list_job)
+#m.addConstrs(timeline_project[proj] == horizon - LP.sum('*',proj) for proj in list_job)
+m.addConstrs(timeline_project[proj] == horizon - quicksum(LP[day,proj] for day in range(horizon)) for proj in list_job)
+
 
 # calculate project delay
 # verifier la ligne suivante +1 ou - 1...???
