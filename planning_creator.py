@@ -20,4 +20,11 @@ for key in list(X):
 
 df = pd.DataFrame.from_dict(edt, orient='index')
 
+
+
 print(df)
+gain = 0
+for key in list(gain_project):
+    gain = gain + gain_project[key].x
+
+print("Gain : " + str(gain))
