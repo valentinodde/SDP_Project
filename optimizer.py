@@ -244,8 +244,9 @@ m.update()
 
 
 # Fonction Objectif
-m.setObjective(gain_project.sum('*'), GRB.MAXIMIZE)  
-
+m.setObjectiveN(gain_project.sum('*'),0, 3)  
+m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, -2)
+m.setObjectiveN(duration_max_project(get_longest_project(), LP, START_PLAN),2,-1)
 
 # Résolution du PL
 m.optimize()
