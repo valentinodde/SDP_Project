@@ -40,6 +40,18 @@ def create_vacations():
         vacations[employe['name']] = employe['vacations']
     return vacations
 
+def get_longest_project():
+    max_score = 0
+    longest_project = None
+    for job in instance['jobs']:
+        qualifs = job['working_days_per_qualification']
+        score = 0
+        for qualif in qualifs:
+            score +=qualifs[qualif]
+        if score > max_score:
+            max_score = score
+            longest_project = job['name']
+    return (longest_project)
 
 CP = working_days_per_qualification(instance)
 vacations = create_vacations()
