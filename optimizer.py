@@ -41,6 +41,20 @@ def create_vacations():
     return vacations
 
 
+def get_job_day():
+    job_day = dict()
+    for job in instance['jobs']:
+        s=0
+        for key in list(job['working_days_per_qualification']):
+            s = s + job['working_days_per_qualification'][key]
+        job_day[job['name']] = s
+    return job_day
+
+job_day = get_job_day()
+
+long_proj = max(job_day, key=job_day.get)
+
+
 CP = working_days_per_qualification(instance)
 vacations = create_vacations()
 
@@ -85,6 +99,17 @@ for t in range(horizon):
 # time x job
 possibility_reduced2 = tuplelist(L3)
 
+L4 = []
+
+for pers in list_pers:
+    for p in list_job:
+        L4.append((pers, p))
+
+# pers x job
+possibility_reduced4 = tuplelist(L4)
+
+
+
 m = Model()
 
 # planning
@@ -93,6 +118,11 @@ X = m.addVars(possibility, name='x', vtype=GRB.BINARY)
 S = m.addVars(possibility_reduced, vtype=GRB.INTEGER, lb = -1000, name='s')
 
 LP_MIN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='lpm')
+
+
+START_MAT = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='start_matrix')
+START_PLAN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -1000, name='start_planning')
+
 
 
 #vacation days
@@ -112,6 +142,13 @@ delay_project_temp = m.addVars(list_job,vtype=GRB.INTEGER,lb = -1000)
 
 # donne les jours de retard pour chaque projets
 delay_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = -1000)
+
+
+# project per employe
+proj_employe = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = -1000)
+proj_employe_count = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = -1000)
+
+nb_proj_per_employe = m.addVars(list_pers,vtype=GRB.INTEGER,lb = -1000)
 
 
 
@@ -163,8 +200,34 @@ m.addConstrs(timeline_project[proj] <= horizon-1 + M * b[proj] for i, proj in en
 m.addConstrs((b[proj] == 1) >> (gain_project[proj] == 0) for i, proj in enumerate(list_job))
 m.addConstrs((b[proj] == 0) >> (gain_project[proj] == instance['jobs'][i]['gain'] + delay_project[proj]*instance['jobs'][i]['daily_penalty']) for i, proj in enumerate(list_job))
 
+# Start matrix planning
+m.addConstrs(START_MAT[T, job] == quicksum(X[pers, t, job, comp] for t in range(T+1) for pers in list_pers for comp in list_comp) for index_job, job in enumerate(list_job) for T in range(horizon))
+
+m.addConstrs(START_PLAN[T, job] == min_(START_MAT[T, job],1) for index_job, job in enumerate(list_job) for T in range(horizon))
+
+# add start date project
+def duration_max_project(project_name, M_END, M_START):
+    duration = M_START.sum('*', project_name) - M_END.sum('*', project_name)
+    return duration
+
+
+# project per employe
+
+m.addConstrs(proj_employe[pers, proj] == X.sum(pers,'*',proj,'*') for pers in list_pers for proj in list_job)
+m.addConstrs(proj_employe_count[pers, proj] == min_(proj_employe[pers, proj],1) for pers in list_pers for proj in list_job)
+m.addConstrs(nb_proj_per_employe[pers] == proj_employe_count.sum(pers, '*') for pers in list_pers)
 
 m.update()
+
+
+# objective function
+# gain
+# -> gain_project.sum('*')
+# project per employe
+# -> nb_proj_per_employe.sum('*')
+# max project duration
+# -> duration_max_project(plong_proj, LP, START_PLAN)
+
 
 # Fonction Objectif
 m.setObjective(gain_project.sum('*'), GRB.MAXIMIZE)  
