@@ -8,9 +8,7 @@ Created on Tue Jan 24 09:44:03 2023
 from gurobipy import *
 from data_loader import *
 
-
-instance = load_small_data()
-
+instance = load_medium_data()
 
 def create_qualifications(data):
     qualifs = []
@@ -39,6 +37,48 @@ def create_vacations():
     for employe in instance['staff']:
         vacations[employe['name']] = employe['vacations']
     return vacations
+
+def create_competences_per_employe():
+    """competences per employe"""
+    competences = dict()
+    for employe in instance['staff']:
+        competences[employe['name']] = employe['qualifications']
+    return competences
+
+def create_competences_per_job():
+    """competences per job"""
+    competences = dict()
+    for job in instance['jobs']:
+        competences[job['name']] = list(job['working_days_per_qualification'])
+    return competences
+
+def create_number_of_competences_per_job():
+    """competences per job"""
+    competences = dict()
+    for job in instance['jobs']:
+        competences[job['name']] = job['working_days_per_qualification']
+    return competences
+
+def create_due_date_of_jobs():
+    """competences per job"""
+    due_dates = dict()
+    for job in instance['jobs']:
+        due_dates[job['name']] = job['due_date']
+    return due_dates
+
+def create_gains_per_jobs():
+    """gains per job"""
+    gains = dict()
+    for job in instance['jobs']:
+        gains[job['name']] = job['gain']
+    return gains
+
+def create_delays_per_jobs():
+    """gains per job"""
+    daily_penalties = dict()
+    for job in instance['jobs']:
+        daily_penalties[job['name']] = job['daily_penalty']
+    return daily_penalties
 
 def get_longest_project():
     max_score = 0
@@ -78,12 +118,13 @@ horizon = instance['horizon']
 list_pers = [p['name'] for p in instance['staff']]
 list_comp = instance['qualifications']
 list_job = [p['name'] for p in instance['jobs']]
+list_horizon = [i for i in range (1, horizon + 1)]
 
 nb_comp = len(list_comp)
 
 L = []
 for pers in list_pers:
-    for t in range(horizon):
+    for t in list_horizon:
         for p in list_job:
             for c in list_comp:
                 L.append((pers, t, p, c))
@@ -94,7 +135,7 @@ possibility = tuplelist(L)
 
 L2 = []
 
-for t in range(horizon):
+for t in list_horizon:
     for p in list_job:
         for c in list_comp:
             L2.append((t, p, c))
@@ -104,7 +145,7 @@ possibility_reduced = tuplelist(L2)
 
 L3 = []
 
-for t in range(horizon):
+for t in list_horizon:
     for p in list_job:
         L3.append((t, p))
 
@@ -122,142 +163,100 @@ possibility_reduced4 = tuplelist(L4)
 
 
 
+
 m = Model()
 
 # planning
 X = m.addVars(possibility, name='x', vtype=GRB.BINARY)
 
-S = m.addVars(possibility_reduced, vtype=GRB.INTEGER, lb = 0, name='s')
+Y = m.addVars(list_job, vtype=GRB.BINARY, lb = 0, name='s')
 
-LP_MIN = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -100, name='lpm')
+L = m.addVars(list_job, vtype=GRB.INTEGER, lb = 0, name='s')
 
+E = m.addVars(list_job, vtype=GRB.INTEGER, lb = 0, ub = horizon , name='s')
 
 START_MAT = m.addVars(possibility_reduced2, vtype=GRB.INTEGER,lb = -100, name='start_matrix')
 START_PLAN = m.addVars(possibility_reduced2, vtype=GRB.BINARY, name='start_planning')
+S = m.addVars(list_job, vtype=GRB.INTEGER, lb = 0, ub = horizon , name='s')
 
-
-
-#vacation days
-m.addConstrs(X.sum(pers,t,'*','*') == 0 for pers in list_pers for t in range(horizon) if t+1 in vacations[pers])
-
-
-# Matrice de projet au cours du temps : vaut 1 à partir du moment où le projet est fini
-LP = m.addVars(possibility_reduced2, vtype=GRB.BINARY,name='lp')
-
-
-# Donne pour chaque projet sa date de fin moins 1 et vaut horizon si il n'est pas fini
-timeline_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = 0)
-
-
-
-delay_project_temp = m.addVars(list_job,vtype=GRB.INTEGER,lb = -100)
-
-# donne les jours de retard pour chaque projets
-delay_project = m.addVars(list_job,vtype=GRB.INTEGER,lb = -horizon)
-
+#objectif 2 nombre de projets par employé
 
 # project per employe
 proj_employe = m.addVars(possibility_reduced4,vtype=GRB.INTEGER,lb = 0)
 proj_employe_count = m.addVars(possibility_reduced4,vtype=GRB.BINARY)
 
+# constraints
+
+# une personne par projet par jour
+m.addConstrs(X.sum(pers,t,'*','*') <= 1 for pers in list_pers for t in list_horizon)
+
+# vacances
+vacations = create_vacations()
+m.addConstrs(X.sum(pers,t,'*','*') == 0 for pers in list_pers for t in vacations[pers])
+
+# une personne ne travaille pas sur un job inutile ou pour lequel elle n'est pas qualifiée
+competence_per_employe = create_competences_per_employe() 
+competence_per_job = create_competences_per_job() 
+
+for pers in list_pers:
+    for day in list_horizon:  
+        for job in list_job:
+            for comp in list_comp:
+                if not (comp in competence_per_employe[pers]) or not (comp in competence_per_job[job]):
+                    m.addConstr(X[pers, day, job, comp] == 0)
+
+number_of_competence_per_project = create_number_of_competences_per_job()
+
+for job in list_job:
+    for comp in competence_per_job[job]:
+        m.addConstr(Y[job] * number_of_competence_per_project[job][comp] <= X.sum('*','*', job,comp))
+        m.addConstr(X.sum('*','*', job,comp) <= number_of_competence_per_project[job][comp])
+
+
+m.addConstrs(X[pers, day, job, comp] * (day) <= E[job] for pers in list_pers for day in list_horizon for job in list_job for comp in list_comp)
+
+due_dates = create_due_date_of_jobs()
+m.addConstrs(E[job] - due_dates[job] <= L[job] for job in list_job)
+
+#constraint nombre de projets par employés
 nb_proj_per_employe = m.addVars(list_pers,vtype=GRB.INTEGER,lb = 0)
-
-
-
-# variable pour modéliser le if
-b = m.addVars(list_job, vtype=GRB.BINARY)
-
-# donne le gain pour chaque projet
-gain_project = m.addVars(list_job,lb = -100)
-
-
-
-
-m.update()
-
-
-# une personne par projet et par jour
-m.addConstrs(X.sum(pers,t,'*','*') <= 1 for pers in list_pers for t in range(horizon))
-
-
-# une personne travail sur des projet où elle a les compétences
-qualifs = create_qualifications(instance)
-m.addConstrs(qualifs[i][j] >= X[pers,t,job,comp] for i,pers in enumerate(list_pers) for t in range(horizon) for j,comp in enumerate(list_comp) for job in list_job)
-
-
-#avancement du projet
-m.addConstrs((LP_MIN[T, job] == (quicksum(X[pers, t, job, comp] for t in range(T+1) for pers in list_pers for comp in list_comp) - quicksum(CP[index_job][index_comp] for index_comp in range(nb_comp)) + 1))  for index_job, job in enumerate(list_job) for T in range(horizon))
-
-#contrainte sur les compétences : pas plus que nécessaire sur chaque projet
-m.addConstrs(CP[index_job][index_comp] >= quicksum(X[pers,t,job,comp] for pers in list_pers for t in range(horizon)) for index_comp,comp in enumerate(list_comp) for index_job,job in enumerate(list_job))
-
-#construction of LP
-m.addConstrs(LP[T, job] == max_(LP_MIN[T, job],0) for T in range(horizon) for job in list_job)
-
-# construct timeline project
-#m.addConstrs(timeline_project[proj] == horizon - LP.sum('*',proj) for proj in list_job)
-m.addConstrs(timeline_project[proj] == horizon - quicksum(LP[day,proj] for day in range(horizon)) for proj in list_job)
-
-
-# calculate project delay
-# verifier la ligne suivante +1 ou - 1...???
-m.addConstrs(delay_project_temp[proj] == (instance['jobs'][i]['due_date']-timeline_project[proj] - 1) for i, proj in enumerate(list_job))
-m.addConstrs(delay_project[proj] == min_(delay_project_temp[proj],0) for i, proj in enumerate(list_job))
-
-
-# big M method to model if
-M = horizon
-
-m.addConstrs(timeline_project[proj] >= horizon - M * (1 - b[proj]) for i, proj in enumerate(list_job))
-m.addConstrs(timeline_project[proj] <= horizon-1 + M * b[proj] for i, proj in enumerate(list_job))
-
-m.addConstrs((b[proj] == 1) >> (gain_project[proj] == 0) for i, proj in enumerate(list_job))
-m.addConstrs((b[proj] == 0) >> (gain_project[proj] == instance['jobs'][i]['gain'] + delay_project[proj]*instance['jobs'][i]['daily_penalty']) for i, proj in enumerate(list_job))
-
-# Start matrix planning
-m.addConstrs(START_MAT[T, job] == quicksum(X[pers, t, job, comp] for t in range(T+1) for pers in list_pers for comp in list_comp) for index_job, job in enumerate(list_job) for T in range(horizon))
-
-m.addConstrs(START_PLAN[T, job] == min_(START_MAT[T, job],1) for index_job, job in enumerate(list_job) for T in range(horizon))
-
-# add start date project
-def duration_max_project(project_name, M_END, M_START):
-    duration = M_START.sum('*', project_name) - M_END.sum('*', project_name)
-    return duration
-
-
-# project per employe
-
 m.addConstrs(proj_employe[pers, proj] == X.sum(pers,'*',proj,'*') for pers in list_pers for proj in list_job)
 m.addConstrs(proj_employe_count[pers, proj] == min_(proj_employe[pers, proj],1) for pers in list_pers for proj in list_job)
 m.addConstrs(nb_proj_per_employe[pers] == proj_employe_count.sum(pers, '*') for pers in list_pers)
+
+# constraint number of day of the longest project
+# Start matrix planning
+m.addConstrs(START_MAT[T, job] == quicksum(X[pers, t, job, comp] for t in range (1,T) for pers in list_pers for comp in list_comp) for index_job, job in enumerate(list_job) for T in list_horizon)
+
+m.addConstrs(START_PLAN[T, job] == min_(START_MAT[T, job],1) for index_job, job in enumerate(list_job) for T in list_horizon)
+
+m.addConstrs(S[job] == horizon - START_PLAN.sum('*', job) for job in list_job)
+
+# add start date project
+def duration_max_project(job, E, S):
+    duration = E[job] - S[job]
+    return duration
+
+# gain
+gain_per_job = create_gains_per_jobs()
+delay_per_job = create_delays_per_jobs()
+
+def gain_project(Y, L):
+    res = 0
+    for job in list_job:
+        res = res + Y[job] * gain_per_job[job] - L[job] * delay_per_job[job]
+    return res
 
 m.update()
 
 # Fonction Objectifs
 
-m.setObjectiveN(gain_project.sum('*'),0, 3, -1)  
+m.setObjectiveN(gain_project(Y, L), 0, 3, -1)  
 m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, 2, 1)
-m.setObjectiveN(duration_max_project(get_longest_project(), LP, START_PLAN), 2, 1, 1)
+m.setObjectiveN(duration_max_project(get_longest_project(), E, S), 2, 1, 1)
 
 # Résolution du PL
 m.optimize()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
