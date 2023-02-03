@@ -7,8 +7,11 @@ Created on Tue Jan 24 09:44:03 2023
 """
 from gurobipy import *
 from data_loader import *
+from instance_generator import * 
 
-instance = load_medium_data()
+#instance = load_medium_data()
+instance = create_new_instance(10, 4, 5, 4)
+print(instance)
 
 def create_qualifications(data):
     qualifs = []
@@ -250,10 +253,11 @@ def gain_project(Y, L):
 m.update()
 
 # Fonction Objectifs
+m.setObjective(gain_project(Y, L), GRB.MAXIMIZE)  
 
-m.setObjectiveN(gain_project(Y, L), 0, 3, -1)  
-m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, 2, 1)
-m.setObjectiveN(duration_max_project(get_longest_project(), E, S), 2, 1, 1)
+# m.setObjective(gain_project(Y, L), 0, 3, -1)  
+# m.setObjectiveN(nb_proj_per_employe.sum('*'), 1, 2, 1)
+# m.setObjectiveN(duration_max_project(get_longest_project(), E, S), 2, 1, 1)
 
 # Résolution du PL
 m.optimize()
