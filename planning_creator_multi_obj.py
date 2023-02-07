@@ -2,7 +2,7 @@ from optimizer_multi_obj import *
 from data_loader import *
 import pandas as pd
 
-instance = load_small_data()
+instance = load_medium_data()
 
 
 horizon = instance['horizon']
@@ -21,14 +21,37 @@ def gain_project(Y, L):
 # m, X,Y,L = optimisation(instance,1, 1)
 # print(gain_project(Y,L))
 
+grid = []
+X_grid = []
+Y_grid = []
+
+
 for constr_longest_proj in range (1,horizon):
+    row = []
+    row_X = []
+    row_Y = []
     for constr_proj_per_employe in range (1, len(instance['jobs'])):
-        m, X,Y,L = optimisation(instance,constr_longest_proj, constr_proj_per_employe)
-        
-        print(constr_longest_proj)
-        print(constr_proj_per_employe)
-        print(gain_project(Y,L))
-        print('____')
+        row_X.append(constr_longest_proj)
+        row_Y.append(constr_proj_per_employe)
+        try:
+            m, X,Y,L = optimisation(instance,constr_longest_proj, constr_proj_per_employe)
+            row.append(gain_project(Y,L))
+            
+            print(constr_longest_proj)
+            print(constr_proj_per_employe)
+            print(gain_project(Y,L))
+            print('____')
+        except:
+            row.append(0)
+    X_grid.append(row_X)
+    grid.append(row)
+    Y_grid.append(row_Y)
+    
+
+print(grid)
+print(X_grid)
+print(Y_grid)
+
 
 # edt = dict()
 # for employe in list_pers:
