@@ -4,8 +4,6 @@ import pandas as pd
 
 #instance = load_medium_data()
 
-
-
 horizon = instance['horizon']
 list_pers = [p['name'] for p in instance['staff']]
 list_comp = instance['qualifications']

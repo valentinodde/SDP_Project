@@ -1,5 +1,6 @@
-from create_model import create_staff_qualifications
-from data_loader import load_small_data
+from planning_creator_multi_obj import *
+from figure_builder import *
 
-if __name__ == '__main__':
-    print(create_staff_qualifications(load_small_data()))
+if __name__ == "__main__":
+    X,Y,Z = surface_pareto()
+    plot_3D(X,Y,Z)

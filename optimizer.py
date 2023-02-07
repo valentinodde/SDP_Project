@@ -9,9 +9,10 @@ from gurobipy import *
 from data_loader import *
 from instance_generator import * 
 
-#instance = load_medium_data()
-instance = create_new_instance(10, 4, 5, 4)
-print(instance)
+instance = load_medium_data()
+
+# instance = create_new_instance(60, 20, 30, 15)
+# print(instance)
 
 def create_qualifications(data):
     qualifs = []
